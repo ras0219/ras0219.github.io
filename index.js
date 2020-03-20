@@ -106,6 +106,14 @@ var importObject = {
         log : (_str) => {
             console.log(exportObject.getString(_str));
         },
+        add_css_link: (_filename) => {
+            var head = document.getElementsByTagName('head')[0];
+            var style = document.createElement('link');
+            style.href = exportObject.getString(_filename);
+            style.type = 'text/css';
+            style.rel = 'stylesheet';
+            head.append(style);
+        },
         append_html : (_id, _html) => {
             var id = exportObject.getString(_id);
             var html = exportObject.getString(_html);
@@ -115,6 +123,9 @@ var importObject = {
             var id = exportObject.getString(_id);
             var html = exportObject.getString(_html);
             document.getElementById(id).innerHTML = html;
+        },
+        object_set_innerhtml: (_id, _html) => {
+            wasm_object[_id].innerHTML = exportObject.getString(_html);
         },
         remove_element : (_id) => {
             var id = exportObject.getString(_id);
@@ -169,16 +180,10 @@ var importObject = {
             return exportObject.allocateString(document.cookie).start
         },
         write_cookie: (_cookie) => {
-            var cookie = exportObject.getString(_cookie);
-            document.cookie = cookie;
+            document.cookie = exportObject.getString(_cookie);
         },
-        jseval: (_text) => {
-            var text = exportObject.getString(_text)
-            eval(text);
-        },
-        jseval_object: (_text) => {
-            var text = exportObject.getString(_text);
-            return save_wasm_object(eval(text));
+        document_get_element_by_id: (_string) => {
+            return save_wasm_object(document.getElementById(exportObject.getString(_string)));
         },
         jscall_object_i32: (_id, i) => {
             return save_wasm_object(wasm_object[_id](i));
@@ -189,6 +194,75 @@ var importObject = {
         free_object: (_id) => {
             wasm_object[_id] = null;
             wasm_object_freelist.push(_id);
+        },
+        object_get_context: (_id, _text) => { return save_wasm_object(wasm_object[_id].getContext(exportObject.getString(_text))); },
+        canvas_get_extents: (_id, _addr) => {
+            var i = exportObject.internal.memory32;
+            var c = wasm_object[_id];
+            i[_addr >> 2] = c.width;
+            i[(_addr >> 2) + 1] = c.height;
+        },
+        canvas_set_extents: (_id, width, height) => { wasm_object[_id].width = width; wasm_object[_id].height = height; },
+        window_device_pixel_ratio: () => { return window.devicePixelRatio; },
+        context_scale: (_id, x, y) => { wasm_object[_id].scale(x, y); },
+        context_fill_style: (_id, _text) => { wasm_object[_id].fillStyle = exportObject.getString(_text); },
+        context_stroke_style: (_id, _text) => { wasm_object[_id].strokeStyle = exportObject.getString(_text); },
+        context_line_width: (_id, width) => { wasm_object[_id].lineWidth = width; },
+        context_font: (_id, _text) => { wasm_object[_id].font = exportObject.getString(_text); },
+        context_stroke_rect: (_id, x, y, w, h) => { wasm_object[_id].strokeRect(x,y,w,h); },
+        context_fill_rect: (_id, x, y, w, h) => { wasm_object[_id].fillRect(x,y,w,h); },
+        context_fill_text: (_id, _text, x, y) => { wasm_object[_id].fillText(exportObject.getString(_text),x,y); },
+        context_begin_path: (_id) => { wasm_object[_id].beginPath(); },
+        context_line_to: (_id, x, y) => { wasm_object[_id].lineTo(x,y); },
+        context_move_to: (_id, x, y) => { wasm_object[_id].moveTo(x,y); },
+        context_stroke: (_id) => { wasm_object[_id].stroke(); },
+        on_frame: (_cb) => { var f = (event) => { callwasm(_cb); requestAnimationFrame(f); }; f(); },
+        add_mouse_touch_event_listeners: (_id, _cbmouse, _cbtouch) => {
+            (function(){
+                var canvas = wasm_object[_id];
+
+                var getMouseCallback = (code) => {
+                    return (event) => {
+                        var rect = canvas.getBoundingClientRect();
+
+                        var event_buffer = exportObject.getCallbackBuffer();
+                        event_buffer[0] = code;
+                        event_buffer[1] = event.clientX - rect.x;
+                        event_buffer[2] = event.clientY - rect.y;
+                        callwasm(_cbmouse);
+
+                        event.preventDefault();
+                    };
+                };
+                canvas.addEventListener('mouseenter', getMouseCallback(0));
+                canvas.addEventListener('mouseleave', getMouseCallback(1));
+                canvas.addEventListener('mousemove', getMouseCallback(2));
+                canvas.addEventListener('mousedown', getMouseCallback(3));
+                canvas.addEventListener('mouseup', getMouseCallback(4));
+
+                var getTouchCallback = (code) => {
+                    return (event) => {
+                        var rect = canvas.getBoundingClientRect();
+                        var touches = event.changedTouches;
+
+                        var event_buffer = exportObject.getCallbackBuffer();
+                        for (var i = 0; i < touches.length; i++) {
+                            var touch = touches[i];
+                            event_buffer[0] = code;
+                            event_buffer[1] = touch.identifier
+                            event_buffer[2] = touch.pageX - rect.x;
+                            event_buffer[3] = touch.pageY - rect.y;
+                            callwasm(_cbtouch);
+                        }
+
+                        event.preventDefault();
+                    };
+                };
+                canvas.addEventListener('touchstart', getTouchCallback(1));
+                canvas.addEventListener('touchend', getTouchCallback(2));
+                canvas.addEventListener('touchmove', getTouchCallback(0));
+                canvas.addEventListener('touchcancel', getTouchCallback(2));
+            }())
         },
         glclearColor: (_id, r, g, b, a) => { wasm_object[_id].clearColor(r,g,b,a); },
         glclearDepth: (_id, d) => { wasm_object[_id].clearDepth(d); },
