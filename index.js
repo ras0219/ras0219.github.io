@@ -182,8 +182,26 @@ var importObject = {
         write_cookie: (_cookie) => {
             document.cookie = exportObject.getString(_cookie);
         },
+        document_create_element: (_string) => {
+            return save_wasm_object(document.createElement(exportObject.getString(_string)));
+        },
         document_get_element_by_id: (_string) => {
             return save_wasm_object(document.getElementById(exportObject.getString(_string)));
+        },
+        object_add_class: (_id, _text) => {
+            wasm_object[_id].classList.add(exportObject.getString(_text));
+        },
+        object_remove_class: (_id, _text) => {
+            wasm_object[_id].classList.remove(exportObject.getString(_text));
+        },
+        object_append_child: (_node, _newnode) => {
+            wasm_object[_node].appendChild(wasm_object[_newnode]);
+        },
+        object_remove_child: (_node, _newnode) => {
+            wasm_object[_node].removeChild(wasm_object[_newnode]);
+        },
+        object_insert_before: (_node, _newnode, _existing) => {
+            wasm_object[_node].insertBefore(wasm_object[_newnode], wasm_object[_existing]);
         },
         jscall_object_i32: (_id, i) => {
             return save_wasm_object(wasm_object[_id](i));

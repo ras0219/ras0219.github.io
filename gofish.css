@@ -27,6 +27,27 @@
     background: grey;
 }
 
+.remove-1s {
+    animation: example 1s;
+    animation-fill-mode: forwards;
+    overflow: hidden;
+}
+
+@keyframes example {
+    from { }
+    to {
+        width: 0;
+        padding-left: 0;
+        padding-right: 0;
+        margin-left: 0;
+        margin-right: 0;
+        display: none;
+        visibility: hidden;
+        border-left: 0;
+        border-right: 0;
+    }
+}
+
 #player {
     background: grey;
 }
