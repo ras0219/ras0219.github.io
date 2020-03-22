@@ -4,15 +4,15 @@
 
 #game {
     position: fixed;
-    width: 800px;
+    width: 1920px;
     left: 50%;
-    margin-left: -400px;
-    height: 480px;
+    margin-left: -960px;
+    height: 1080px;
     top: 50%;
-    margin-top: -240px;
+    margin-top: -540px;
 }
 
-@media all and (max-height: 480px), (max-width: 800px) {
+@media all and (max-height: 1080px), (max-width: 1920px) {
     #game {
         position: fixed;
         width: 100%;
@@ -65,6 +65,10 @@
     animation: expand-horizontal 1s;
     animation-fill-mode: forwards;
     overflow: hidden;
+}
+
+.valid {
+    filter: drop-shadow(0px 0px 5px red);
 }
 
 #player {
@@ -145,8 +149,9 @@
     line-height: 100%;
     text-align: center;
     font-size: x-large;
+    /*font-family: apple color emoji,segoe ui emoji,noto color emoji,android emoji,emojisymbols,emojione mozilla,twemoji mozilla,segoe ui symbol;*/
 }
 
-.deck li a:hover {
+li.valid a:hover {
     background: red;
 }

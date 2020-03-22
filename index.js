@@ -38,6 +38,7 @@ var exportObject = {
 
         exportObject.internal.free(str.start);
     },
+    utf8decoder: new TextDecoder("utf-8"),
     getString : (offset) => {
         /* TODO: adapt https://aransentin.github.io/cwasm/ */
         /*
@@ -61,15 +62,11 @@ var exportObject = {
             return null;
         }
 
-        let s = "";
-        while (exportObject.internal.memory[offset] != 0) {
-            s += String.fromCharCode(exportObject.internal.memory[offset]);
-            offset++;
-            if (offset >= exportObject.internal.memory.byteLength) {
-                debugger;
-            }
+        let offset2 = offset;
+        while (exportObject.internal.memory[offset2] != 0) {
+            offset2++;
         }
-        return s;
+        return exportObject.utf8decoder.decode(exportObject.internal.memory.subarray(offset, offset2));
     },
     getCallbackBuffer : () => {
         var addr = exportObject.internal.get_callback_buffer();
