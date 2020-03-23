@@ -197,8 +197,23 @@ var importObject = {
         object_remove_child: (_node, _newnode) => {
             wasm_object[_node].removeChild(wasm_object[_newnode]);
         },
+        object_set_attribute: (_node, _attr, _value) => {
+            wasm_object[_node].setAttribute(exportObject.getString(_attr), exportObject.getString(_value));
+        },
+        object_replace_child: (_node, _newnode, _existing) => {
+            wasm_object[_node].replaceChild(wasm_object[_newnode], wasm_object[_existing]);
+        },
         object_insert_before: (_node, _newnode, _existing) => {
             wasm_object[_node].insertBefore(wasm_object[_newnode], wasm_object[_existing]);
+        },
+        object_get_bounding_client_rect: (_node, _addr_x, _addr_y, _addr_w, _addr_h) => {
+            let rect = wasm_object[_node].getBoundingClientRect();
+            var i = exportObject.internal.memory32;
+            var f = exportObject.internal.memoryf32;
+            f[_addr_x >> 2] = rect.x;
+            f[_addr_y >> 2] = rect.y;
+            i[_addr_w >> 2] = rect.w;
+            i[_addr_h >> 2] = rect.h;
         },
         jscall_object_i32: (_id, i) => {
             return save_wasm_object(wasm_object[_id](i));
