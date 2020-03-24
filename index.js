@@ -92,6 +92,10 @@ function save_wasm_object(v) {
         return i;
     }
 }
+function free_wasm_object(_id) {
+    wasm_object[_id] = null;
+    wasm_object_freelist.push(_id);
+}
 
 var importObject = {
     env: {
@@ -212,8 +216,19 @@ var importObject = {
             var f = exportObject.internal.memoryf32;
             f[_addr_x >> 2] = rect.x;
             f[_addr_y >> 2] = rect.y;
-            i[_addr_w >> 2] = rect.w;
-            i[_addr_h >> 2] = rect.h;
+            i[_addr_w >> 2] = rect.width;
+            i[_addr_h >> 2] = rect.height;
+        },
+        object_add_event_listener: (_node, _eventname, _cb) => {
+            wasm_object[_node].addEventListener(exportObject.getString(_eventname), (event) => {
+                var event_buffer = exportObject.getCallbackBuffer();
+                event_buffer[0] = save_wasm_object(event.target);
+                callwasm(_cb);
+                free_wasm_object(event_buffer[0]);
+            });
+        },
+        object_equals: (_id1, _id2) => {
+            return wasm_object[_id1] === wasm_object[_id2];
         },
         jscall_object_i32: (_id, i) => {
             return save_wasm_object(wasm_object[_id](i));
@@ -221,10 +236,7 @@ var importObject = {
         jscall_object_f32: (_id, i) => {
             return save_wasm_object(wasm_object[_id](i));
         },
-        free_object: (_id) => {
-            wasm_object[_id] = null;
-            wasm_object_freelist.push(_id);
-        },
+        free_object: free_wasm_object,
         object_get_context: (_id, _text) => { return save_wasm_object(wasm_object[_id].getContext(exportObject.getString(_text))); },
         canvas_get_extents: (_id, _addr) => {
             var i = exportObject.internal.memory32;

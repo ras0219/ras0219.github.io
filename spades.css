@@ -150,7 +150,7 @@
     width: 3em;
     border: 1px solid black;
     user-select: none;
-    margin: 5% 0 0 1%;
+    margin: 10px 5px;
     background: white;
 }
 
@@ -172,4 +172,8 @@ li.valid a:hover {
     position: absolute;
     top:0;
     left:0;
+}
+
+.zero-margin-animating {
+    margin: 0;
 }
