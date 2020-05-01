@@ -238,6 +238,7 @@ var importObject = {
         },
         free_object: free_wasm_object,
         object_get_context: (_id, _text) => { return save_wasm_object(wasm_object[_id].getContext(exportObject.getString(_text))); },
+        object_parent_node: (_id) => { return save_wasm_object(wasm_object[_id].parentNode); },
         canvas_get_extents: (_id, _addr) => {
             var i = exportObject.internal.memory32;
             var c = wasm_object[_id];
