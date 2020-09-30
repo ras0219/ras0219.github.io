@@ -76,12 +76,14 @@ var exportObject = {
 
 var wasm_callbacks = {}
 // reserve index 0 for use in wasm as "null"
+// index -1 is "undefined"
 var wasm_object = [null]
 var wasm_object_freelist = []
 
 function save_wasm_object(v) {
     if (v === null) { return 0; }
-    if (wasm_object_freelist.length == 0)
+    if (v === undefined) { return -1; }
+    if (wasm_object_freelist.length === 0)
     {
         return wasm_object.push(v) - 1;
     }
@@ -93,8 +95,10 @@ function save_wasm_object(v) {
     }
 }
 function free_wasm_object(_id) {
-    wasm_object[_id] = null;
-    wasm_object_freelist.push(_id);
+    if (_id > 0) {
+        wasm_object[_id] = null;
+        wasm_object_freelist.push(_id);
+    }
 }
 
 var importObject = {
@@ -128,6 +132,12 @@ var importObject = {
         object_set_innerhtml: (_id, _html) => {
             wasm_object[_id].innerHTML = exportObject.getString(_html);
         },
+        object_set_property: (_id, _prop, _id2) => {
+            wasm_object[_id][exportObject.getString(_prop)] = wasm_object[_id2];
+        },
+        object_get_property: (_id, _prop) => {
+            return save_wasm_object(wasm_object[_id][exportObject.getString(_prop)]);
+        },
         remove_element : (_id) => {
             var id = exportObject.getString(_id);
             var element = document.getElementById(id);
@@ -144,6 +154,15 @@ var importObject = {
         },
         register_callback_token: (i, _func, _ctx) => {
             wasm_callbacks[i] = [_func, _ctx]
+        },
+        convert_callback_to_object: (_cb) => {
+            return save_wasm_object((event) => {
+                var event_buffer = exportObject.getCallbackBuffer();
+                var x = save_wasm_object(event);
+                event_buffer[0] = x;
+                callwasm(_cb);
+                free_wasm_object(x);
+            });
         },
         deregister_callback_token: (i) => {
             delete wasm_callbacks[i];
@@ -219,13 +238,8 @@ var importObject = {
             i[_addr_w >> 2] = rect.width;
             i[_addr_h >> 2] = rect.height;
         },
-        object_add_event_listener: (_node, _eventname, _cb) => {
-            wasm_object[_node].addEventListener(exportObject.getString(_eventname), (event) => {
-                var event_buffer = exportObject.getCallbackBuffer();
-                event_buffer[0] = save_wasm_object(event.target);
-                callwasm(_cb);
-                free_wasm_object(event_buffer[0]);
-            });
+        object_add_event_listener: (_node, _eventname, _obj) => {
+            wasm_object[_node].addEventListener(exportObject.getString(_eventname), wasm_object[_obj]);
         },
         object_equals: (_id1, _id2) => {
             return wasm_object[_id1] === wasm_object[_id2];
