@@ -75,14 +75,15 @@ var exportObject = {
 };
 
 var wasm_callbacks = {}
-// reserve index 0 for use in wasm as "null"
-// index -1 is "undefined"
-var wasm_object = [null]
+// reserve indexes -1,0,1,2 for use as constants
+var wasm_object = [null, true, false]
 var wasm_object_freelist = []
 
 function save_wasm_object(v) {
     if (v === null) { return 0; }
     if (v === undefined) { return -1; }
+    if (v === true) { return 1; }
+    if (v === false) { return 2; }
     if (wasm_object_freelist.length === 0)
     {
         return wasm_object.push(v) - 1;
@@ -95,7 +96,7 @@ function save_wasm_object(v) {
     }
 }
 function free_wasm_object(_id) {
-    if (_id > 0) {
+    if (_id > 2) {
         wasm_object[_id] = null;
         wasm_object_freelist.push(_id);
     }
@@ -137,6 +138,39 @@ var importObject = {
         },
         object_get_property: (_id, _prop) => {
             return save_wasm_object(wasm_object[_id][exportObject.getString(_prop)]);
+        },
+        object_from_string: (_text) => {
+            return save_wasm_object(exportObject.getString(_text));
+        },
+        object_allocate_string: (_id) => {
+            return exportObject.allocateString(wasm_object[_id]).start;
+        },
+        object_json_parse: (_id) => {
+            return save_wasm_object(JSON.parse(wasm_object[_id]));
+        },
+        object_json_stringify: (_id) => {
+            return save_wasm_object(JSON.stringify(wasm_object[_id]));
+        },
+        object_get_document: (_id) => {
+            return save_wasm_object(document);
+        },
+        object_get_window: (_id) => {
+            return save_wasm_object(window);
+        },
+        object_get_history: (_id) => {
+            return save_wasm_object(history);
+        },
+        object_btoa: (_id) => {
+            return save_wasm_object(btoa(wasm_object[_id]));
+        },
+        object_atob: (_id) => {
+            return save_wasm_object(atob(wasm_object[_id]));
+        },
+        new_rtcpeerconnection: (_id) => {
+            return save_wasm_object(new RTCPeerConnection(wasm_object[_id]));
+        },
+        new_urlsearchparams: (_id) => {
+            return save_wasm_object(new URLSearchParams(wasm_object[_id]));
         },
         remove_element : (_id) => {
             var id = exportObject.getString(_id);
@@ -244,11 +278,41 @@ var importObject = {
         object_equals: (_id1, _id2) => {
             return wasm_object[_id1] === wasm_object[_id2];
         },
+        jscall_call_o: (_id, _a1) => {
+            return save_wasm_object(wasm_object[_id].call(wasm_object[_a1]));
+        },
+        jscall_call_oo: (_id, _a1, _a2) => {
+            return save_wasm_object(wasm_object[_id].call(wasm_object[_a1], wasm_object[_a2]));
+        },
+        jscall_call_ooo: (_id, _a1, _a2, _a3) => {
+            return save_wasm_object(wasm_object[_id].call(wasm_object[_a1], wasm_object[_a2], wasm_object[_a3]));
+        },
+        jscall_call_oooo: (_id, _a1, _a2, _a3, _a4) => {
+            return save_wasm_object(wasm_object[_id].call(wasm_object[_a1], wasm_object[_a2], wasm_object[_a3], wasm_object[_a4]));
+        },
+        jscall_object: (_id) => {
+            return save_wasm_object(wasm_object[_id]());
+        },
+        jscall_object_o: (_id, _a1) => {
+            return save_wasm_object(wasm_object[_id](wasm_object[_a1]));
+        },
+        jscall_object_oo: (_id, _a1, _a2) => {
+            return save_wasm_object(wasm_object[_id](wasm_object[_a1], wasm_object[_a2]));
+        },
+        jscall_object_ooo: (_id, _a1, _a2, _a3) => {
+            return save_wasm_object(wasm_object[_id](wasm_object[_a1], wasm_object[_a2], wasm_object[_a3]));
+        },
+        jscall_object_oooo: (_id, _a1, _a2, _a3, _a4) => {
+            return save_wasm_object(wasm_object[_id](wasm_object[_a1], wasm_object[_a2], wasm_object[_a3], wasm_object[_a4]));
+        },
         jscall_object_i32: (_id, i) => {
             return save_wasm_object(wasm_object[_id](i));
         },
         jscall_object_f32: (_id, i) => {
             return save_wasm_object(wasm_object[_id](i));
+        },
+        new_array: () => {
+            return save_wasm_object([]);
         },
         free_object: free_wasm_object,
         object_get_context: (_id, _text) => { return save_wasm_object(wasm_object[_id].getContext(exportObject.getString(_text))); },
