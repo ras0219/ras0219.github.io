@@ -1,6 +1,6 @@
 CACHE MANIFEST
 
-# Version: 2020-10-05T03:07:56Z
+# Version: 2020-10-05T03:13:40Z
 
 CACHE:
 index.html
@@ -8,5 +8,6 @@ gofish.css
 spades.css
 index.js
 native.js
+native-opt.wasm
 favicon.ico
 favicon.png
