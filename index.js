@@ -278,6 +278,9 @@ var importObject = {
         object_equals: (_id1, _id2) => {
             return wasm_object[_id1] === wasm_object[_id2];
         },
+        object_copy: (_id) => {
+            return save_wasm_object(wasm_object[_id]);
+        },
         jscall_call_o: (_id, _a1) => {
             return save_wasm_object(wasm_object[_id].call(wasm_object[_a1]));
         },
@@ -462,35 +465,44 @@ function callwasm(id) {
     }
 }
 
-/*
-WebAssembly.instantiateStreaming(fetch('native.wasm'), importObject).then(results => {
-    exportObject.internal.memory = new Uint8Array(results.instance.exports.memory.buffer);
-    exportObject.internal.malloc = results.instance.exports.malloc;
-    exportObject.internal.free = results.instance.exports.free;
-    exportObject.internal.call = results.instance.exports.call;
-    exportObject.internal.callback = results.instance.exports.callback;
+if (typeof WebAssembly === "object") {
+    var memory = new WebAssembly.Memory({initial:33, maximum:1000});
+    importObject.env.memory = memory;
+    WebAssembly.instantiateStreaming(fetch('native-opt.wasm'), importObject).then(results => {
+        var native = results.instance.exports;
+        var buffer = memory.buffer;
+        exportObject.internal.malloc = native.malloc;
+        exportObject.internal.buffer = buffer;
+        exportObject.internal.memory = new Int8Array(buffer);
+        exportObject.internal.memory32 = new Int32Array(buffer);
+        exportObject.internal.memoryf32 = new Float32Array(buffer);
+        exportObject.internal.free = native.free;
+        exportObject.internal.call = native.call;
+        exportObject.internal.callback = native.callback;
+        exportObject.internal.get_callback_buffer = native.get_callback_buffer;
+        console.log("loaded");
+        native.main();
+    });
+} else {
+    var script = document.createElement('script');
+    script.src = 'native.js';
+    script.type = 'text/javascript';
 
-    results.instance.exports.main();
-});
-*/
-var script = document.createElement('script');
-script.src = 'native.js';
-script.type = 'text/javascript';
+    script.onload = function () {
+        var buffer = new ArrayBuffer(1024*1024*10);
+        var native = instantiate(importObject.env, { 'buffer': buffer });
+        exportObject.internal.malloc = native.malloc;
+        exportObject.internal.buffer = buffer;
+        exportObject.internal.memory = new Int8Array(buffer);
+        exportObject.internal.memory32 = new Int32Array(buffer);
+        exportObject.internal.memoryf32 = new Float32Array(buffer);
+        exportObject.internal.free = native.free;
+        exportObject.internal.call = native.call;
+        exportObject.internal.callback = native.callback;
+        exportObject.internal.get_callback_buffer = native.get_callback_buffer;
+        console.log("loaded");
+        native.main();
+    };
 
-script.onload = function () {
-    var buffer = new ArrayBuffer(1024*1024*10);
-    var native = instantiate(importObject.env, { 'buffer': buffer });
-    exportObject.internal.malloc = native.malloc;
-    exportObject.internal.buffer = buffer;
-    exportObject.internal.memory = new Int8Array(buffer);
-    exportObject.internal.memory32 = new Int32Array(buffer);
-    exportObject.internal.memoryf32 = new Float32Array(buffer);
-    exportObject.internal.free = native.free;
-    exportObject.internal.call = native.call;
-    exportObject.internal.callback = native.callback;
-    exportObject.internal.get_callback_buffer = native.get_callback_buffer;
-    console.log("loaded");
-    native.main();
-};
-
-document.getElementsByTagName('head')[0].appendChild(script);
+    document.getElementsByTagName('head')[0].appendChild(script);
+}
