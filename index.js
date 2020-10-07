@@ -11,18 +11,16 @@ var exportObject = {
             return null;
         }
 
-        var size = s.length + 1;
-        var offset = exportObject.internal.malloc(size);
+        var encoded = exportObject.utf8encoder.encode(s);
 
-        for (var i = 0; i < size - 1; i++)
-        {
-            exportObject.internal.memory[offset + i] = s.charCodeAt(i);
-        }
-        exportObject.internal.memory[offset + size - 1] = 0;
+        var offset = exportObject.internal.malloc(encoded.length + 1);
+
+        exportObject.internal.memory.set(encoded, offset)
+        exportObject.internal.memory[offset + encoded.length + 1] = 0;
 
         return {
             start : offset,
-            size : size
+            size : encoded.length + 1
         };
     },
     freeString : (str) => {
@@ -39,6 +37,7 @@ var exportObject = {
         exportObject.internal.free(str.start);
     },
     utf8decoder: new TextDecoder("utf-8"),
+    utf8encoder: new TextEncoder(),
     getString : (offset) => {
         /* TODO: adapt https://aransentin.github.io/cwasm/ */
         /*
@@ -130,6 +129,9 @@ var importObject = {
             var html = exportObject.getString(_html);
             document.getElementById(id).innerHTML = html;
         },
+        memory_set: (_id, offset) => {
+            exportObject.internal.memory.set(wasm_object[_id], offset);
+        },
         object_set_innerhtml: (_id, _html) => {
             wasm_object[_id].innerHTML = exportObject.getString(_html);
         },
@@ -138,6 +140,9 @@ var importObject = {
         },
         object_get_property: (_id, _prop) => {
             return save_wasm_object(wasm_object[_id][exportObject.getString(_prop)]);
+        },
+        object_get_integer_property: (_id, _prop) => {
+            return wasm_object[_id][exportObject.getString(_prop)];
         },
         object_from_string: (_text) => {
             return save_wasm_object(exportObject.getString(_text));
@@ -466,6 +471,14 @@ function callwasm(id) {
 }
 
 if (typeof WebAssembly === "object") {
+    if (typeof WebAssembly.instantiateStreaming !== "function") {
+        WebAssembly.instantiateStreaming = (p, importObject) =>
+            p.then(response =>
+                response.arrayBuffer()
+            ).then(bytes =>
+                WebAssembly.instantiate(bytes, importObject)
+            );
+    }
     var memory = new WebAssembly.Memory({initial:33, maximum:1000});
     importObject.env.memory = memory;
     WebAssembly.instantiateStreaming(fetch('native-opt.wasm'), importObject).then(results => {
