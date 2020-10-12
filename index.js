@@ -16,7 +16,7 @@ var exportObject = {
         var offset = exportObject.internal.malloc(encoded.length + 1);
 
         exportObject.internal.memory.set(encoded, offset)
-        exportObject.internal.memory[offset + encoded.length + 1] = 0;
+        exportObject.internal.memory[offset + encoded.length] = 0;
 
         return {
             start : offset,
@@ -131,6 +131,12 @@ var importObject = {
         },
         memory_set: (_id, offset) => {
             exportObject.internal.memory.set(wasm_object[_id], offset);
+        },
+        object_from_i32: (i) => {
+            return save_wasm_object(i);
+        },
+        object_to_i32: (i) => {
+            return wasm_object[i];
         },
         object_set_innerhtml: (_id, _html) => {
             wasm_object[_id].innerHTML = exportObject.getString(_html);
