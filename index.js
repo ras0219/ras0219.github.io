@@ -1,13 +1,12 @@
 var exportObject = {
-    internal : {
-        memory : null,
-        malloc : null,
-        free : null,
-        call : null,
+    internal: {
+        memory: null,
+        malloc: null,
+        free: null,
+        call: null,
     },
-    allocateString : (s) => {
-        if (exportObject.internal.memory == null)
-        {
+    allocateString: (s) => {
+        if (exportObject.internal.memory == null) {
             return null;
         }
 
@@ -19,18 +18,16 @@ var exportObject = {
         exportObject.internal.memory[offset + encoded.length] = 0;
 
         return {
-            start : offset,
-            size : encoded.length + 1
+            start: offset,
+            size: encoded.length + 1
         };
     },
-    freeString : (str) => {
-        if (exportObject.internal.memory == null)
-        {
+    freeString: (str) => {
+        if (exportObject.internal.memory == null) {
             return;
         }
 
-        if (str == null)
-        {
+        if (str == null) {
             return null;
         }
 
@@ -38,7 +35,7 @@ var exportObject = {
     },
     utf8decoder: new TextDecoder("utf-8"),
     utf8encoder: new TextEncoder(),
-    getString : (offset) => {
+    getString: (offset) => {
         /* TODO: adapt https://aransentin.github.io/cwasm/ */
         /*
             let utf8decoder = new TextDecoder( "utf-8" );
@@ -51,13 +48,11 @@ var exportObject = {
             }
         */
 
-        if (exportObject.internal.memory == null)
-        {
+        if (exportObject.internal.memory == null) {
             return "";
         }
 
-        if (offset == 0)
-        {
+        if (offset == 0) {
             return null;
         }
 
@@ -67,7 +62,7 @@ var exportObject = {
         }
         return exportObject.utf8decoder.decode(exportObject.internal.memory.subarray(offset, offset2));
     },
-    getCallbackBuffer : () => {
+    getCallbackBuffer: () => {
         var addr = exportObject.internal.get_callback_buffer();
         return new Int32Array(exportObject.internal.buffer, addr, 10);
     }
@@ -83,12 +78,10 @@ function save_wasm_object(v) {
     if (v === undefined) { return -1; }
     if (v === true) { return 1; }
     if (v === false) { return 2; }
-    if (wasm_object_freelist.length === 0)
-    {
+    if (wasm_object_freelist.length === 0) {
         return wasm_object.push(v) - 1;
     }
-    else
-    {
+    else {
         var i = wasm_object_freelist.pop();
         wasm_object[i] = v;
         return i;
@@ -103,12 +96,12 @@ function free_wasm_object(_id) {
 
 var importObject = {
     env: {
-        abort : (_err) => { 
+        abort: (_err) => {
             var msg = exportObject.getString(_err);
             debugger;
             //alert(msg);
         },
-        log : (_str) => {
+        log: (_str) => {
             console.log(exportObject.getString(_str));
         },
         add_css_link: (_filename) => {
@@ -119,7 +112,7 @@ var importObject = {
             style.rel = 'stylesheet';
             head.append(style);
         },
-        append_html : (_id, _html) => {
+        append_html: (_id, _html) => {
             var id = exportObject.getString(_id);
             var html = exportObject.getString(_html);
             document.getElementById(id).innerHTML += html;
@@ -157,10 +150,18 @@ var importObject = {
             return exportObject.allocateString(wasm_object[_id]).start;
         },
         object_json_parse: (_id) => {
-            return save_wasm_object(JSON.parse(wasm_object[_id]));
+            try {
+                return save_wasm_object(JSON.parse(wasm_object[_id]));
+            } catch (e) {
+                return -1;
+            }
         },
         object_json_stringify: (_id) => {
-            return save_wasm_object(JSON.stringify(wasm_object[_id]));
+            try {
+                return save_wasm_object(JSON.stringify(wasm_object[_id]));
+            } catch (e) {
+                return -1;
+            }
         },
         object_get_document: (_id) => {
             return save_wasm_object(document);
@@ -172,10 +173,18 @@ var importObject = {
             return save_wasm_object(history);
         },
         object_btoa: (_id) => {
-            return save_wasm_object(btoa(wasm_object[_id]));
+            try {
+                return save_wasm_object(btoa(wasm_object[_id]));
+            } catch (e) {
+                return -1;
+            }
         },
         object_atob: (_id) => {
-            return save_wasm_object(atob(wasm_object[_id]));
+            try {
+                return save_wasm_object(atob(wasm_object[_id]));
+            } catch (e) {
+                return -1;
+            }
         },
         new_rtcpeerconnection: (_id) => {
             return save_wasm_object(new RTCPeerConnection(wasm_object[_id]));
@@ -183,17 +192,17 @@ var importObject = {
         new_urlsearchparams: (_id) => {
             return save_wasm_object(new URLSearchParams(wasm_object[_id]));
         },
-        remove_element : (_id) => {
+        remove_element: (_id) => {
             var id = exportObject.getString(_id);
             var element = document.getElementById(id);
             element.parentNode.removeChild(element);
         },
-        get_value : (_id) => {
+        get_value: (_id) => {
             var id = exportObject.getString(_id);
             value = document.getElementById(id).value;
             return exportObject.allocateString(value).start;
         },
-        set_value : (_id, _value) => {
+        set_value: (_id, _value) => {
             var id = exportObject.getString(_id);
             document.getElementById(id).value = exportObject.getString(_value);
         },
@@ -227,14 +236,13 @@ var importObject = {
                 }
             };
 
-            if (_payload != 0)
-            {
+            if (_payload != 0) {
                 var payload = exportObject.getString(_payload);
                 options.body = payload;
             }
 
-            fetch(url, options).then(function(response) {
-                response.text().then(function(value) {
+            fetch(url, options).then(function (response) {
+                response.text().then(function (value) {
                     var native_value = exportObject.allocateString(value);
                     exportObject.internal.callback(i, native_value.start);
                     exportObject.freeString(native_value);
@@ -285,6 +293,12 @@ var importObject = {
         },
         object_add_event_listener: (_node, _eventname, _obj) => {
             wasm_object[_node].addEventListener(exportObject.getString(_eventname), wasm_object[_obj]);
+        },
+        object_remove_event_listener: (_node, _eventname, _obj) => {
+            wasm_object[_node].removeEventListener(exportObject.getString(_eventname), wasm_object[_obj]);
+        },
+        object_log: (_id) => {
+            console.log(wasm_object[_id]);
         },
         object_equals: (_id1, _id2) => {
             return wasm_object[_id1] === wasm_object[_id2];
@@ -344,16 +358,16 @@ var importObject = {
         context_stroke_style: (_id, _text) => { wasm_object[_id].strokeStyle = exportObject.getString(_text); },
         context_line_width: (_id, width) => { wasm_object[_id].lineWidth = width; },
         context_font: (_id, _text) => { wasm_object[_id].font = exportObject.getString(_text); },
-        context_stroke_rect: (_id, x, y, w, h) => { wasm_object[_id].strokeRect(x,y,w,h); },
-        context_fill_rect: (_id, x, y, w, h) => { wasm_object[_id].fillRect(x,y,w,h); },
-        context_fill_text: (_id, _text, x, y) => { wasm_object[_id].fillText(exportObject.getString(_text),x,y); },
+        context_stroke_rect: (_id, x, y, w, h) => { wasm_object[_id].strokeRect(x, y, w, h); },
+        context_fill_rect: (_id, x, y, w, h) => { wasm_object[_id].fillRect(x, y, w, h); },
+        context_fill_text: (_id, _text, x, y) => { wasm_object[_id].fillText(exportObject.getString(_text), x, y); },
         context_begin_path: (_id) => { wasm_object[_id].beginPath(); },
-        context_line_to: (_id, x, y) => { wasm_object[_id].lineTo(x,y); },
-        context_move_to: (_id, x, y) => { wasm_object[_id].moveTo(x,y); },
+        context_line_to: (_id, x, y) => { wasm_object[_id].lineTo(x, y); },
+        context_move_to: (_id, x, y) => { wasm_object[_id].moveTo(x, y); },
         context_stroke: (_id) => { wasm_object[_id].stroke(); },
         on_frame: (_cb) => { var f = (event) => { callwasm(_cb); requestAnimationFrame(f); }; f(); },
         add_mouse_touch_event_listeners: (_id, _cbmouse, _cbtouch) => {
-            (function(){
+            (function () {
                 var canvas = wasm_object[_id];
 
                 var getMouseCallback = (code) => {
@@ -399,7 +413,7 @@ var importObject = {
                 canvas.addEventListener('touchcancel', getTouchCallback(2));
             }())
         },
-        glclearColor: (_id, r, g, b, a) => { wasm_object[_id].clearColor(r,g,b,a); },
+        glclearColor: (_id, r, g, b, a) => { wasm_object[_id].clearColor(r, g, b, a); },
         glclearDepth: (_id, d) => { wasm_object[_id].clearDepth(d); },
         glclearBuffer: (_id) => {
             var gl = wasm_object[_id];
@@ -485,7 +499,7 @@ if (typeof WebAssembly === "object") {
                 WebAssembly.instantiate(bytes, importObject)
             );
     }
-    var memory = new WebAssembly.Memory({initial:33, maximum:1000});
+    var memory = new WebAssembly.Memory({ initial: 33, maximum: 1000 });
     importObject.env.memory = memory;
     WebAssembly.instantiateStreaming(fetch('native-opt.wasm'), importObject).then(results => {
         var native = results.instance.exports;
@@ -508,7 +522,7 @@ if (typeof WebAssembly === "object") {
     script.type = 'text/javascript';
 
     script.onload = function () {
-        var buffer = new ArrayBuffer(1024*1024*10);
+        var buffer = new ArrayBuffer(1024 * 1024 * 10);
         var native = instantiate(importObject.env, { 'buffer': buffer });
         exportObject.internal.malloc = native.malloc;
         exportObject.internal.buffer = buffer;
